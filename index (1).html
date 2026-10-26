@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>주간 업무 플래너</title>
+<style>
+@font-face{font-family:'KoPubWorld Dotum';font-style:normal;font-weight:400;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/font-kopubworld@1.0.3/fonts/KoPubWorld-Dotum-Medium.woff2') format('woff2'),url('https://cdn.jsdelivr.net/npm/font-kopubworld@1.0.3/fonts/KoPubWorld-Dotum-Medium.woff') format('woff')}
+@font-face{font-family:'KoPubWorld Dotum';font-style:normal;font-weight:700;font-display:swap;src:url('https://cdn.jsdelivr.net/npm/font-kopubworld@1.0.3/fonts/KoPubWorld-Dotum-Bold.woff2') format('woff2'),url('https://cdn.jsdelivr.net/npm/font-kopubworld@1.0.3/fonts/KoPubWorld-Dotum-Bold.woff') format('woff')}
+
+/* Layout: 상단 주간 헤더 + 주간목표 띠 → 월~금 5열 보드(좁으면 1열). 종이 다이어리 느낌의 차분한 블루그레이. */
+:root{
+  --bg:#eef1f4; --paper:#ffffff; --ink:#1d2733; --muted:#66727f; --line:#d9dfe6; --soft:#f5f7f9;
+  --accent:#2f5bd3; --accent-ink:#ffffff; --check:#3a4048; --check-ink:#ffffff; --sel:#dfe6f3; --sel-line:#9fb1d6; --today:#fff6d6; --done:#9aa5b1;
+  --f-title:"KoPubWorld Dotum","KoPub Dotum","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  --f-display:"KoPubWorld Dotum","KoPub Dotum","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  --f-body:"KoPubWorld Dotum","KoPub Dotum","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  --f-mono:"KoPubWorld Dotum","KoPub Dotum","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  /* 사용자 선택 팔레트 (테마별로 재정의) */
+  --c-default:var(--ink); --c-red:#d0342c; --c-orange:#c76a00; --c-green:#1f8a4c; --c-blue:#2f5bd3; --c-purple:#7a3fc4; --c-pink:#c2367a; --c-gray:#6b7480;
+  --h-none:transparent; --h-yellow:#fff1a8; --h-red:#ffdcd8; --h-orange:#ffe4c4; --h-green:#d7f2df; --h-blue:#dbe6ff; --h-purple:#ece0ff; --h-gray:#e6e9ed;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#13181e; --paper:#1b222a; --ink:#e4e9ef; --muted:#93a0ad; --line:#2c3641; --soft:#212a33;
+  --accent:#7d9cff; --accent-ink:#0f1520; --check:#9aa3ad; --check-ink:#13181e; --sel:#26344a; --sel-line:#4c6595; --today:#2e2a17; --done:#5e6a76;
+  --c-red:#ff7b72; --c-orange:#f2a65a; --c-green:#5fd08c; --c-blue:#8aa8ff; --c-purple:#c09bff; --c-pink:#ff7fb6; --c-gray:#a2acb7;
+  --h-yellow:#4a4114; --h-red:#4d2421; --h-orange:#4a3218; --h-green:#1d3d2a; --h-blue:#1f2d52; --h-purple:#35254f; --h-gray:#2c343d;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13181e; --paper:#1b222a; --ink:#e4e9ef; --muted:#93a0ad; --line:#2c3641; --soft:#212a33;
+  --accent:#7d9cff; --accent-ink:#0f1520; --check:#9aa3ad; --check-ink:#13181e; --sel:#26344a; --sel-line:#4c6595; --today:#2e2a17; --done:#5e6a76;
+  --c-red:#ff7b72; --c-orange:#f2a65a; --c-green:#5fd08c; --c-blue:#8aa8ff; --c-purple:#c09bff; --c-pink:#ff7fb6; --c-gray:#a2acb7;
+  --h-yellow:#4a4114; --h-red:#4d2421; --h-orange:#4a3218; --h-green:#1d3d2a; --h-blue:#1f2d52; --h-purple:#35254f; --h-gray:#2c343d;
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;letter-spacing:-.03em}
+input,textarea,button{letter-spacing:inherit}
+.wrap{max-width:1440px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:16px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* 헤더 */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.top h1{font-family:var(--f-title);font-weight:700;letter-spacing:-.04em;font-size:clamp(26px,4vw,36px);line-height:1.1;margin:0;text-wrap:balance}
+.range{font-family:var(--f-title);font-weight:600;color:var(--muted);font-size:13px;margin-top:4px;font-variant-numeric:tabular-nums}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 12px;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.status{font-size:12px;color:var(--muted);min-width:70px;text-align:right}
+
+/* 주간목표 */
+.goals{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.sec-head h2{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0}
+.meter{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:80px;height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.goal-list{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}
+
+/* 요일 보드 */
+.board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.board{grid-template-columns:minmax(0,1fr)}}
+.day{background:var(--paper);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0}
+.day.is-today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.day-head{padding:12px 14px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:12px 12px 0 0}
+.day.is-today .day-head{background:var(--today)}
+.dname{font-family:var(--f-title);font-weight:700;font-size:20px;line-height:1}
+.dright{display:flex;align-items:center;gap:4px}
+.ddate{font-family:var(--f-title);font-weight:600;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tag{font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:1px 7px;margin-left:6px;font-family:var(--f-body);vertical-align:2px}
+.block{padding:10px 12px;display:grid;gap:4px}
+.block+.block{border-top:1px dashed var(--line)}
+.block-label{font-size:11px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.memo{width:100%;min-height:52px;resize:vertical;border:1px solid transparent;background:var(--soft);border-radius:8px;padding:8px;font:inherit;color:var(--ink)}
+.memo:focus{border-color:var(--line)}
+
+/* 항목 */
+.item{display:flex;align-items:flex-start;gap:6px;border-radius:7px;padding:3px 4px;position:relative}
+.item:hover{background:var(--soft)}
+.item.has-bg:hover{filter:brightness(.97)}
+.grip{flex:none;width:12px;margin-left:-2px;line-height:24px;font-size:13px;color:var(--muted);cursor:grab;user-select:none;touch-action:none;opacity:0;transition:opacity .15s}
+.item:hover .grip{opacity:.8}
+@media (hover:none){.grip{opacity:.5}}
+.item.dragging{opacity:.35}
+body.reordering,body.reordering *{cursor:grabbing!important;user-select:none}
+.dropline{position:fixed;height:2px;background:var(--accent);border-radius:2px;z-index:80;pointer-events:none}
+.chk{appearance:none;flex:none;width:16px;height:16px;margin:4px 0 0;border:1.5px solid var(--muted);border-radius:4px;cursor:pointer;display:grid;place-items:center;background:var(--paper)}
+.chk:checked{background:var(--check);border-color:var(--check)}
+.chk:checked::after{content:"";width:8px;height:4px;border:2px solid var(--check-ink);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.time{flex:none;width:56px;border:0;background:transparent;font-family:var(--f-mono);font-size:12px;color:var(--accent);padding:3px 0;font-variant-numeric:tabular-nums}
+.emo{flex:none;font-size:15px;line-height:24px}
+.txt{flex:1;min-width:0;border:0;background:transparent;font:inherit;color:inherit;padding:2px 0;resize:none;overflow:hidden;line-height:1.45;field-sizing:content;min-height:24px}
+.txt::placeholder{color:var(--muted)}
+.txt:focus{outline:none}
+.item.done .txt{text-decoration:line-through;color:var(--done)!important}
+.tools{flex:none;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.item:hover .tools,.item:focus-within .tools{opacity:1}
+@media (hover:none){.tools{opacity:.7}}
+.ibtn{border:0;background:transparent;width:24px;height:24px;border-radius:6px;font-size:13px;color:var(--muted);display:grid;place-items:center}
+.ibtn:hover{background:var(--line);color:var(--ink)}
+.add{border:1px dashed var(--line);background:transparent;border-radius:7px;padding:5px 8px;font-size:12px;color:var(--muted);text-align:left}
+.add:hover{border-color:var(--accent);color:var(--accent)}
+.empty{font-size:12px;color:var(--muted);padding:2px 4px}
+
+/* 꾸미기 팝오버 */
+.pop{position:fixed;z-index:50;width:300px;max-width:calc(100vw - 24px);background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:14px;display:grid;gap:12px}
+.pop h3{margin:0;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.04em}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px}
+.emoji-grid button{border:0;background:transparent;font-size:18px;border-radius:6px;padding:3px 0}
+.emoji-grid button:hover,.emoji-grid button[aria-pressed="true"]{background:var(--soft)}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:600}
+.sw[aria-pressed="true"]{border-color:var(--ink)}
+.sw.bgsw{border-radius:7px}
+.custom{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.custom input[type=text]{width:64px;border:1px solid var(--line);border-radius:6px;padding:4px 6px;background:var(--soft);color:var(--ink);font-size:16px;text-align:center}
+.custom input[type=color]{width:30px;height:26px;border:1px solid var(--line);border-radius:6px;background:var(--paper);padding:1px}
+.pop-foot{display:flex;justify-content:space-between;gap:8px}
+.item.sel{background:var(--sel)!important;box-shadow:inset 0 0 0 1px var(--sel-line)}
+.ctx{position:fixed;z-index:70;min-width:190px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:5px;display:grid}
+.ctx button{border:0;background:transparent;text-align:left;padding:7px 10px;border-radius:6px;font-size:13px;display:flex;justify-content:space-between;gap:16px}
+.ctx button:hover:not(:disabled){background:var(--soft)}
+.ctx button:disabled{color:var(--done);cursor:default}
+.ctx .danger:not(:disabled){color:var(--c-red)}
+.ctx kbd{font:inherit;font-size:11px;color:var(--muted)}
+.ctx hr{border:0;border-top:1px solid var(--line);margin:4px 2px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:60}
+.hint{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 id="wk-title">주간 업무 플래너</h1>
+      <div class="range" id="wk-range"></div>
+    </div>
+    <div class="nav">
+      <button class="btn" id="prev" aria-label="이전 주">← 이전 주</button>
+      <button class="btn primary" id="today">이번 주</button>
+      <button class="btn" id="next" aria-label="다음 주">다음 주 →</button>
+      <button class="btn" id="carry" title="이번 주 미완료 할 일과 목표를 다음 주로 복사">미완료 다음 주로</button>
+      <span class="status" id="status" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <section class="goals" aria-labelledby="g-h">
+    <div class="sec-head">
+      <h2 id="g-h">🎯 주간 목표</h2>
+      <div class="meter"><span id="g-count">0/0</span><span class="bar"><i id="g-bar"></i></span></div>
+    </div>
+    <div class="goal-list" id="goals"></div>
+  </section>
+
+  <main class="board" id="board"></main>
+</div>
+
+<div class="ctx" id="ctx" hidden role="menu">
+  <button data-act="copy" data-need="sel" role="menuitem">복사하기<kbd>Ctrl+C</kbd></button>
+  <button data-act="cut" data-need="sel" role="menuitem">잘라내기<kbd>Ctrl+X</kbd></button>
+  <button data-act="paste" role="menuitem">붙여넣기<kbd>Ctrl+V</kbd></button>
+  <hr>
+  <button data-act="done" data-need="sel" role="menuitem">완료 체크</button>
+  <button data-act="del" data-need="sel" role="menuitem" class="danger">삭제하기<kbd>Del</kbd></button>
+</div>
+<div class="pop" id="pop" hidden role="dialog" aria-label="항목 꾸미기">
+  <div><h3>이모지</h3><div class="emoji-grid" id="emojis"></div>
+    <div class="custom" style="margin-top:6px"><label for="emo-in">직접 입력</label><input id="emo-in" type="text" maxlength="4" placeholder="🙂"></div></div>
+  <div><h3>글자 스타일</h3><div class="row"><button class="sw bgsw" id="bold-btn" aria-label="굵게" style="font-weight:700">B</button></div></div>
+  <div><h3>글자색</h3><div class="row" id="fgs"></div>
+    <div class="custom" style="margin-top:6px"><label for="fg-in">사용자 지정</label><input id="fg-in" type="color" value="#2f5bd3"></div></div>
+  <div><h3>배경색</h3><div class="row" id="bgs"></div>
+    <div class="custom" style="margin-top:6px"><label for="bg-in">사용자 지정</label><input id="bg-in" type="color" value="#fff1a8"></div></div>
+  <div class="pop-foot"><button class="btn" id="reset">기본으로</button><button class="btn primary" id="close">닫기</button></div>
+</div>
+
+<script>
+(function(){
+const DAYS=[["mon","월"],["tue","화"],["wed","수"],["thu","목"],["fri","금"]];
+const EMOJIS=["⭐","🔥","✅","❗","⚠️","📌","📅","⏰","📞","💬","📧","📝","📊","📈","💡","🎯","🤝","👥","🧾","💰","🚚","🍱","🛒","🏢","✈️","🎉","☕","🔔","🧪","📦","🛠️","❓"];
+const FG=["default","red","orange","green","blue","purple","pink","gray"];
+const BG=["none","yellow","red","orange","green","blue","purple","gray"];
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+// 주 계산
+function mondayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());const w=(x.getDay()+6)%7;x.setDate(x.getDate()-w);return x}
+const fmtKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+function weekOfMonth(mon){const thu=addDays(mon,3);const first=new Date(thu.getFullYear(),thu.getMonth(),1);const fm=mondayOf(first);const firstThu=addDays(fm,3).getMonth()===thu.getMonth()?fm:addDays(fm,7);return {m:thu.getMonth()+1,y:thu.getFullYear(),n:Math.round((mon-firstThu)/6048e5)+1}}
+
+let monday=mondayOf(new Date());
+let selected=new Set(),data=null, store=null, saveTimer=null, loadSeq=0;
+const blank=()=>({goals:[],days:Object.fromEntries(DAYS.map(([k])=>[k,{items:[],memo:""}]))});
+
+// 저장소: claude db(개인 전용) → 없으면 브라우저 저장
+const LS={get(k){try{const v=localStorage.getItem("wp:"+k);return v?JSON.parse(v):null}catch(e){return null}},set(k,v){try{localStorage.setItem("wp:"+k,JSON.stringify(v));return true}catch(e){return false}}};
+async function initStore(){
+  try{
+    if(!window.claude||!claude.use)return;
+    const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+    if(!db||!user)return;
+    const id=await user.id(); if(!id)return;
+    const col=db.collection("data/users/"+id);
+    store={async get(k){const s=await col.doc(k).get();return s.exists?s.data():null},async set(k,v){await col.doc(k).set(v)}};
+  }catch(e){store=null}
+}
+async function load(keepLocal){
+  const key=fmtKey(monday), seq=++loadSeq;
+  let remote=null;
+  if(store){try{remote=await store.get(key);setStatus("")}catch(e){setStatus("불러오기 실패")}}
+  const local=LS.get(key);
+  if(seq!==loadSeq||key!==fmtKey(monday))return;
+  const ts=v=>(v&&v.updatedAt)||0;
+  let v=ts(remote)>=ts(local)?(remote||local):local;
+  // 저장소 연결 전에 입력한 내용이 더 최신이면 그대로 두고 저장소에 올림
+  if(keepLocal&&data&&ts(data)>ts(v)){if(store)store.set(key,JSON.parse(JSON.stringify(data))).catch(()=>{});return}
+  data=normalize(v);render();
+}
+function normalize(v){const b=blank();if(!v)return b;b.updatedAt=v.updatedAt||0;b.goals=Array.isArray(v.goals)?v.goals:[];for(const[k]of DAYS){const d=(v.days||{})[k]||{};b.days[k]={items:d.items||[...(d.sched||[]),...(d.todo||[])],memo:d.memo||""}}return b}
+function save(){
+  clearTimeout(saveTimer);
+  data.updatedAt=Date.now();
+  const key=fmtKey(monday),snap=JSON.parse(JSON.stringify(data));
+  LS.set(key,snap);
+  if(!store){setStatus("이 브라우저에 저장됨");return}
+  setStatus("저장 중…");
+  saveTimer=setTimeout(async()=>{
+    try{await store.set(key,snap);setStatus("저장됨")}catch(e){setStatus("브라우저에만 저장됨")}
+  },500);
+}
+function setStatus(t){$("#status").textContent=t}
+
+// 렌더링
+function listOf(path){if(path==="goals")return data.goals;const[d,l]=path.split(".");return data.days[d][l]}
+function itemEl(it,path,opts){
+  const row=document.createElement("div");
+  row.className="item"+(it.done?" done":"")+(it.bg&&it.bg!=="none"?" has-bg":"");
+  row.dataset.id=it.id;row.dataset.path=path;if(selected.has(it.id))row.classList.add("sel");
+  if(it.bg&&it.bg!=="none")row.style.background=it.bg.startsWith("#")?it.bg:`var(--h-${it.bg})`;
+  const g=document.createElement("span");g.className="grip";g.textContent="⠿";g.title="끌어서 순서 바꾸기";g.setAttribute("aria-hidden","true");g.addEventListener("pointerdown",e=>startReorder(e,it,path,row));row.append(g);
+  if(opts.check){const c=document.createElement("input");c.type="checkbox";c.className="chk";c.checked=!!it.done;c.id="c-"+it.id;c.setAttribute("aria-label","완료");c.onchange=()=>{it.done=c.checked;row.classList.toggle("done",it.done);meters();save()};row.append(c)}
+  if(opts.time){const t=document.createElement("input");t.className="time";t.id="t-"+it.id;t.placeholder="시간";t.value=it.time||"";t.setAttribute("aria-label","시간");t.oninput=()=>{it.time=t.value;save()};row.append(t)}
+  if(it.emoji){const e=document.createElement("span");e.className="emo";e.textContent=it.emoji;row.append(e)}
+  const tx=document.createElement("textarea");tx.rows=1;tx.className="txt";tx.id="x-"+it.id;tx.value=it.text||"";tx.placeholder=opts.ph;
+  if(it.fg&&it.fg!=="default")tx.style.color=it.fg.startsWith("#")?it.fg:`var(--c-${it.fg})`;
+  if(it.bold)tx.style.fontWeight="600";
+  // Enter → 아랫줄 추가. 한글 입력 중 Enter는 윈도우에서 key가 "Process"로 오므로 물리 키(code)로 판단하고,
+  // 글자 확정 뒤(keyup 또는 줄바꿈 입력) 한 번만 새 줄을 만든다.
+  let pend=false,committed=false;
+  const isEnter=ev=>ev.key==="Enter"||ev.code==="Enter"||ev.code==="NumpadEnter"||ev.keyCode===13;
+  const commit=()=>{if(committed)return;committed=true;pend=false;it.text=tx.value.replace(/\n/g,"");save();addItem(path,it.id)};
+  tx.oninput=()=>{
+    if(tx.value.includes("\n")){tx.value=tx.value.replace(/\n/g,"");commit();return}
+    it.text=tx.value;autosize(tx);save()};
+  tx.onkeydown=ev=>{
+    if(isEnter(ev)&&!ev.shiftKey){
+      if(ev.isComposing||ev.keyCode===229){pend=true;return}
+      ev.preventDefault();commit();return}
+    if(ev.key==="Backspace"&&!ev.isComposing&&tx.value===""){ev.preventDefault();removeItem(path,it.id,true)}
+  };
+  tx.onkeyup=ev=>{if(pend&&isEnter(ev))commit()};
+  row.append(tx);
+  const tools=document.createElement("div");tools.className="tools";
+  const b=(lbl,txt,fn)=>{const x=document.createElement("button");x.className="ibtn";x.textContent=txt;x.title=lbl;x.setAttribute("aria-label",lbl);x.onclick=fn;return x};
+  tools.append(
+    b("꾸미기","🎨",ev=>openPop(it,path,ev.currentTarget)),
+    b("삭제","✕",()=>removeItem(path,it.id,false))
+  );
+  row.append(tools);
+  requestAnimationFrame(()=>autosize(tx));
+  return row;
+}
+function autosize(t){if(CSS.supports("field-sizing","content"))return;t.style.height="auto";t.style.height=t.scrollHeight+"px"}
+const OPTS={goals:{check:true,ph:"이번 주 목표 입력 후 Enter"},items:{check:true,ph:"입력 후 Enter"}};
+function fillList(host,path){
+  host.textContent="";const arr=listOf(path),kind=path==="goals"?"goals":path.split(".")[1];
+  if(!arr.length)arr.push({id:uid(),text:"",done:false}); // 항상 입력할 수 있는 첫 줄
+  arr.forEach(it=>host.append(itemEl(it,path,OPTS[kind])));
+}
+function render(){
+  const wm=weekOfMonth(monday),fri=addDays(monday,4);
+  $("#wk-title").textContent=`${wm.y}년 ${wm.m}월 ${wm.n}주차`;
+  $("#wk-range").textContent=`${monday.getMonth()+1}.${String(monday.getDate()).padStart(2,"0")} (월) – ${fri.getMonth()+1}.${String(fri.getDate()).padStart(2,"0")} (금)`;
+  fillList($("#goals"),"goals");
+  const board=$("#board");board.textContent="";
+  const todayKey=fmtKey(new Date());
+  DAYS.forEach(([k,n],i)=>{
+    const date=addDays(monday,i),isToday=fmtKey(date)===todayKey;
+    const col=document.createElement("section");col.className="day";col.setAttribute("aria-label",n+"요일");
+    col.innerHTML=`<div class="day-head"><span class="dname">${n}</span><span class="ddate">${date.getMonth()+1}/${date.getDate()}</span></div>
+      <div class="block"><div class="block-label"><span></span><span class="meter"><span data-cnt="${k}"></span></span></div><div data-list="${k}.items"></div></div>
+      <div class="block"><textarea class="memo" id="m-${k}" placeholder="메모" aria-label="메모"></textarea></div>`;
+    board.append(col);
+    fillList(col.querySelector(`[data-list="${k}.items"]`),k+".items");
+    const m=col.querySelector(".memo");m.value=data.days[k].memo;m.oninput=()=>{data.days[k].memo=m.value;save()};
+  });
+  meters();
+}
+function meters(){
+  const filled=a=>a.filter(x=>(x.text||"").trim());
+  const g=filled(data.goals),gd=g.filter(x=>x.done).length;
+  $("#g-count").textContent=`${gd}/${g.length} 달성`;$("#g-bar").style.width=g.length?(gd/g.length*100)+"%":"0";
+  DAYS.forEach(([k])=>{const t=filled(data.days[k].items),el=document.querySelector(`[data-cnt="${k}"]`);if(el)el.textContent=t.length?`${t.filter(x=>x.done).length}/${t.length}`:""});
+}
+function rerenderList(path){
+  const host=path==="goals"?$("#goals"):document.querySelector(`[data-list="${path}"]`);
+  fillList(host,path);meters();
+}
+function addItem(path,afterId){
+  const arr=listOf(path),it={id:uid(),text:"",done:false};
+  const i=afterId?arr.findIndex(x=>x.id===afterId):-1;
+  if(i>=0){const p=arr[i];if(p.emoji&&path!=="goals")it.emoji="";arr.splice(i+1,0,it)}else arr.push(it);
+  rerenderList(path);save();
+  document.getElementById("x-"+it.id)?.focus();
+}
+function removeItem(path,id,focusPrev){
+  const arr=listOf(path),i=arr.findIndex(x=>x.id===id);if(i<0)return;
+  if(focusPrev&&arr.length===1)return; // 마지막 한 줄은 남겨 둠
+  const prev=arr[i-1];arr.splice(i,1);rerenderList(path);save();
+  if(focusPrev&&prev){const t=document.getElementById("x-"+prev.id);if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length)}}
+}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-add]");if(a)addItem(a.dataset.add)});
+
+// 꾸미기 팝오버
+const pop=$("#pop");let cur=null;
+function openPop(it,path,anchor){
+  cur={it,path};
+  const r=anchor.getBoundingClientRect(),w=Math.min(300,innerWidth-24);
+  let left=Math.min(Math.max(12,r.right-w),innerWidth-w-12),top=r.bottom+6;
+  pop.hidden=false;const h=pop.offsetHeight;
+  if(top+h>innerHeight-12)top=Math.max(12,r.top-h-6);
+  pop.style.left=left+"px";pop.style.top=top+"px";
+  syncPop();$("#emojis button")?.focus();
+}
+function closePop(){pop.hidden=true;cur=null}
+function syncPop(){
+  if(!cur)return;const it=cur.it;
+  pop.querySelectorAll("#emojis button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===it.emoji));
+  pop.querySelectorAll("#fgs .sw").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===(it.fg||"default")));
+  pop.querySelectorAll("#bgs .sw").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===(it.bg||"none")));
+  $("#bold-btn").setAttribute("aria-pressed",!!it.bold);
+  $("#emo-in").value=EMOJIS.includes(it.emoji)?"":(it.emoji||"");
+}
+function applyStyle(patch){if(!cur)return;Object.assign(cur.it,patch);rerenderList(cur.path);save();syncPop()}
+EMOJIS.forEach(em=>{const b=document.createElement("button");b.textContent=em;b.dataset.v=em;b.setAttribute("aria-label","이모지 "+em);b.onclick=()=>applyStyle({emoji:cur.it.emoji===em?"":em});$("#emojis").append(b)});
+FG.forEach(c=>{const b=document.createElement("button");b.className="sw";b.dataset.v=c;b.textContent="가";b.style.color=c==="default"?"var(--ink)":`var(--c-${c})`;b.setAttribute("aria-label","글자색 "+c);b.onclick=()=>applyStyle({fg:c});$("#fgs").append(b)});
+BG.forEach(c=>{const b=document.createElement("button");b.className="sw bgsw";b.dataset.v=c;b.style.background=c==="none"?"var(--paper)":`var(--h-${c})`;if(c==="none")b.textContent="∅";b.setAttribute("aria-label","배경색 "+c);b.onclick=()=>applyStyle({bg:c});$("#bgs").append(b)});
+$("#bold-btn").onclick=()=>applyStyle({bold:!cur.it.bold});
+$("#emo-in").oninput=e=>applyStyle({emoji:e.target.value.trim()});
+$("#fg-in").oninput=e=>applyStyle({fg:e.target.value});
+$("#bg-in").oninput=e=>applyStyle({bg:e.target.value});
+$("#reset").onclick=()=>applyStyle({emoji:"",fg:"default",bg:"none",bold:false});
+$("#close").onclick=closePop;
+document.addEventListener("mousedown",e=>{if(!pop.hidden&&!pop.contains(e.target)&&!e.target.closest(".ibtn"))closePop()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!pop.hidden)closePop()});
+addEventListener("scroll",()=>{if(!pop.hidden)closePop()},{passive:true});
+
+// 선택 · 우클릭 메뉴 · 복사/잘라내기/붙여넣기
+const HEX_FG={red:"#d0342c",orange:"#c76a00",green:"#1f8a4c",blue:"#2f5bd3",purple:"#7a3fc4",pink:"#c2367a",gray:"#6b7480"};
+const HEX_BG={yellow:"#fff1a8",red:"#ffdcd8",orange:"#ffe4c4",green:"#d7f2df",blue:"#dbe6ff",purple:"#ece0ff",gray:"#e6e9ed"};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const lineText=it=>(it.done?"✅":"⬜")+" "+(it.emoji?it.emoji+" ":"")+(it.text||"").trim();
+function lineHtml(it){let st="";if(it.fg&&it.fg!=="default")st+="color:"+(it.fg.startsWith("#")?it.fg:HEX_FG[it.fg]||"")+";";if(it.bg&&it.bg!=="none")st+="background:"+(it.bg.startsWith("#")?it.bg:HEX_BG[it.bg]||"")+";";if(it.bold)st+="font-weight:bold;";if(it.done)st+="text-decoration:line-through;";return `<div>${it.done?"✅":"⬜"} <span style="${st}">${esc((it.emoji?it.emoji+" ":"")+(it.text||"").trim())}</span></div>`}
+const allPaths=()=>["goals",...DAYS.map(([k])=>k+".items")];
+function findItem(id){for(const p of allPaths()){const a=listOf(p),i=a.findIndex(x=>x.id===id);if(i>=0)return{path:p,arr:a,i,it:a[i]}}return null}
+function paintSel(){document.querySelectorAll(".item").forEach(r=>r.classList.toggle("sel",selected.has(r.dataset.id)))}
+function setSel(ids){selected=new Set(ids);paintSel()}
+function selItems(){return [...document.querySelectorAll(".item")].filter(r=>selected.has(r.dataset.id)).map(r=>findItem(r.dataset.id)).filter(Boolean)}
+let clip=null; // {items,text}
+function doCopy(cut){
+  const f=selItems().filter(x=>(x.it.text||"").trim());if(!f.length)return null;
+  const items=f.map(x=>JSON.parse(JSON.stringify(x.it)));
+  clip={items,text:items.map(lineText).join("\n"),html:items.map(lineHtml).join("")};
+  if(cut)deleteSel(true);
+  toast(`${items.length}개 ${cut?"잘라냈어요":"복사했어요"}. 붙여넣을 칸을 누르고 Ctrl+V 하세요`);
+  return clip;
+}
+function deleteSel(silent){
+  const f=selItems();if(!f.length)return;
+  const paths=new Set(f.map(x=>x.path));
+  f.forEach(x=>{const a=listOf(x.path),i=a.findIndex(y=>y.id===x.it.id);if(i>=0)a.splice(i,1)});
+  selected.clear();paths.forEach(p=>rerenderList(p));save();
+  if(!silent)toast(`${f.length}개 삭제했어요`);
+}
+function toggleDoneSel(){const f=selItems();const v=!f.every(x=>x.it.done);f.forEach(x=>x.it.done=v);new Set(f.map(x=>x.path)).forEach(p=>rerenderList(p));save()}
+function pasteItems(path,anchorId,items){
+  if(!items||!items.length)return;
+  const arr=listOf(path),fresh=items.map(it=>({...JSON.parse(JSON.stringify(it)),id:uid()}));
+  let i=anchorId?arr.findIndex(x=>x.id===anchorId):-1;
+  if(i>=0&&!(arr[i].text||"").trim())arr.splice(i,1,...fresh);
+  else if(i>=0)arr.splice(i+1,0,...fresh);
+  else{const lastEmpty=arr.length&&!(arr[arr.length-1].text||"").trim();if(lastEmpty)arr.splice(arr.length-1,1,...fresh);else arr.push(...fresh)}
+  setSel(fresh.map(x=>x.id));rerenderList(path);paintSel();save();
+  toast(`${fresh.length}개 붙여넣었어요`);
+}
+function parseLines(text){
+  return text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+    const m=l.match(/^(✅|☑️?|✔️?|\[x\])\s*/i),n=l.match(/^(⬜|☐|\[ \])\s*/);
+    return {id:uid(),text:l.replace(/^(✅|☑️?|✔️?|⬜|☐|\[x\]|\[ \])\s*/i,""),done:!!m};
+  });
+}
+// 드래그로 여러 줄 선택
+let drag=null;
+document.addEventListener("mousedown",e=>{
+  if(e.button===2){const r=e.target.closest(".item");if(r&&selected.has(r.dataset.id))e.preventDefault();return} // 우클릭 시 선택 유지
+  if(e.button!==0)return;
+  if(e.target.closest("#ctx"))return;
+  hideCtx();
+  const row=e.target.closest(".item");
+  if(e.target.closest(".grip"))return;
+  if(!row||e.target.closest(".ibtn,.chk")){if(!e.target.closest("#pop"))setSel([]);return}
+  const rows=[...document.querySelectorAll(".item")];
+  if(e.shiftKey&&anchorRow){const a=rows.findIndex(r=>r.dataset.id===anchorRow),b=rows.indexOf(row);if(a>=0){e.preventDefault();setSel(rows.slice(Math.min(a,b),Math.max(a,b)+1).map(r=>r.dataset.id));document.activeElement?.blur();return}}
+  anchorRow=row.dataset.id;drag={start:row,active:false};
+  if(!e.target.closest("textarea")){e.preventDefault();setSel([row.dataset.id]);document.activeElement?.blur()}
+  else setSel([]);
+});
+document.addEventListener("mousemove",e=>{
+  if(!drag)return;
+  const el=document.elementFromPoint(e.clientX,e.clientY),row=el&&el.closest(".item");
+  if(!row)return;
+  if(row!==drag.start)drag.active=true;
+  if(!drag.active)return;
+  const rows=[...document.querySelectorAll(".item")],a=rows.indexOf(drag.start),b=rows.indexOf(row);
+  if(a<0||b<0)return;
+  window.getSelection()?.removeAllRanges();if(document.activeElement?.closest?.(".item"))document.activeElement.blur();
+  setSel(rows.slice(Math.min(a,b),Math.max(a,b)+1).map(r=>r.dataset.id));
+});
+document.addEventListener("mouseup",()=>{drag=null});
+document.addEventListener("focusin",e=>{if(!drag&&e.target.closest(".item")&&e.target.matches("textarea"))setSel([])});
+let anchorRow=null;
+
+// 우클릭 메뉴
+const ctx=$("#ctx");let ctxTarget=null;
+function hideCtx(){ctx.hidden=true}
+document.addEventListener("contextmenu",e=>{
+  const row=e.target.closest(".item"),list=e.target.closest(".day,.goals");
+  if(!row&&!list)return;
+  e.preventDefault();closePop();
+  if(row&&!selected.has(row.dataset.id)){setSel([row.dataset.id]);anchorRow=row.dataset.id}
+  if(row)document.activeElement?.blur();
+  const path=row?row.dataset.path:(list.classList.contains("goals")?"goals":list.querySelector("[data-list]").dataset.list);
+  ctxTarget={path,anchorId:row?row.dataset.id:null};
+  const has=selected.size>0&&!!row;
+  ctx.querySelectorAll("[data-need=sel]").forEach(b=>b.disabled=!has);
+  ctx.querySelector("[data-act=paste]").disabled=!clip;
+  ctx.querySelector("[data-act=done]").textContent=has&&selItems().every(x=>x.it.done)?"완료 해제":"완료 체크";
+  ctx.hidden=false;
+  const w=ctx.offsetWidth,h=ctx.offsetHeight;
+  ctx.style.left=Math.min(e.clientX,innerWidth-w-8)+"px";ctx.style.top=Math.min(e.clientY,innerHeight-h-8)+"px";
+});
+ctx.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]");if(!b||b.disabled)return;hideCtx();
+  const act=b.dataset.act;
+  if(act==="copy"||act==="cut"){const c=doCopy(act==="cut");if(c){try{if(window.ClipboardItem&&navigator.clipboard.write)await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([c.text],{type:"text/plain"}),"text/html":new Blob([c.html],{type:"text/html"})})]);else await navigator.clipboard.writeText(c.text)}catch(_){}}}
+  else if(act==="paste")pasteItems(ctxTarget.path,ctxTarget.anchorId,clip&&clip.items);
+  else if(act==="done")toggleDoneSel();
+  else if(act==="del")deleteSel();
+});
+addEventListener("scroll",hideCtx,{passive:true});addEventListener("resize",hideCtx);
+
+// 끌어서 순서 바꾸기 (⠿ 손잡이)
+const dropLine=document.createElement("div");dropLine.className="dropline";dropLine.hidden=true;document.body.append(dropLine);
+let reorder=null;
+function dropTarget(x,y){
+  const el=document.elementFromPoint(x,y);if(!el)return null;
+  const row=el.closest(".item");
+  if(row&&row.dataset.id!==reorder.id){const r=row.getBoundingClientRect();return{path:row.dataset.path,id:row.dataset.id,after:y>r.top+r.height/2,rect:r}}
+  if(row)return{self:true};
+  const host=el.closest("[data-list]")||(el.closest(".goals")&&$("#goals"))||(el.closest(".day")&&el.closest(".day").querySelector("[data-list]"));
+  if(!host)return null;
+  const path=host.id==="goals"?"goals":host.dataset.list,rows=host.querySelectorAll(".item"),last=rows[rows.length-1];
+  if(!last)return null;
+  return{path,id:last.dataset.id,after:true,rect:last.getBoundingClientRect()};
+}
+function startReorder(e,it,path,row){
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault();e.stopPropagation();
+  hideCtx();closePop();setSel([]);document.activeElement?.blur();
+  reorder={id:it.id,path,row,target:null};row.classList.add("dragging");document.body.classList.add("reordering");
+  e.currentTarget.setPointerCapture?.(e.pointerId);
+}
+document.addEventListener("pointermove",e=>{
+  if(!reorder)return;
+  if(e.clientY<60)scrollBy(0,-12);else if(e.clientY>innerHeight-60)scrollBy(0,12);
+  const t=dropTarget(e.clientX,e.clientY);
+  if(t&&t.self){reorder.target=null;dropLine.hidden=true;return}
+  reorder.target=t;
+  if(!t){dropLine.hidden=true;return}
+  dropLine.hidden=false;dropLine.style.left=t.rect.left+"px";dropLine.style.width=t.rect.width+"px";
+  dropLine.style.top=((t.after?t.rect.bottom:t.rect.top)-1)+"px";
+});
+function endReorder(){
+  if(!reorder)return;
+  const {id,path,row,target}=reorder;reorder=null;
+  row.classList.remove("dragging");document.body.classList.remove("reordering");dropLine.hidden=true;
+  if(!target||target.id===id)return;
+  const src=listOf(path),i=src.findIndex(x=>x.id===id);if(i<0)return;
+  const [it]=src.splice(i,1);
+  const dst=listOf(target.path);let j=dst.findIndex(x=>x.id===target.id);
+  if(j<0)dst.push(it);else dst.splice(target.after?j+1:j,0,it);
+  if(!src.length)src.push({id:uid(),text:"",done:false});
+  rerenderList(path);if(target.path!==path)rerenderList(target.path);save();
+}
+document.addEventListener("pointerup",endReorder);document.addEventListener("pointercancel",endReorder);
+
+// 키보드 · 시스템 클립보드
+const editing=()=>document.activeElement&&document.activeElement.matches("textarea,input");
+document.addEventListener("copy",e=>{if(editing()||!selected.size)return;const c=doCopy(false);if(c){e.preventDefault();e.clipboardData.setData("text/plain",c.text);e.clipboardData.setData("text/html",c.html)}});
+document.addEventListener("cut",e=>{if(editing()||!selected.size)return;const c=doCopy(true);if(c){e.preventDefault();e.clipboardData.setData("text/plain",c.text);e.clipboardData.setData("text/html",c.html)}});
+document.addEventListener("paste",e=>{
+  const t=e.target.closest&&e.target.closest(".item");
+  const text=e.clipboardData?e.clipboardData.getData("text/plain"):"";
+  let path,anchor;
+  if(t&&e.target.matches("textarea")){path=t.dataset.path;anchor=t.dataset.id}
+  else if(!editing()&&selected.size){const s=selItems();if(!s.length)return;const last=s[s.length-1];path=last.path;anchor=last.it.id}
+  else return;
+  let items=null;
+  if(clip&&text.trim()===clip.text.trim())items=clip.items;
+  else if(/\n/.test(text.trim())||/^\s*(✅|⬜|☐|☑)/.test(text))items=parseLines(text);
+  if(!items)return;
+  e.preventDefault();
+  if(t&&e.target.matches("textarea")&&(e.target.value||"").trim()){/* 내용 있는 줄이면 그 아래에 */}
+  pasteItems(path,anchor,items);
+});
+document.addEventListener("keydown",e=>{
+  if(!ctx.hidden&&e.key==="Escape"){hideCtx();return}
+  if(editing()||!selected.size)return;
+  if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();deleteSel()}
+  else if(e.key==="Escape")setSel([]);
+});
+
+// 주 이동
+async function go(m){clearTimeout(saveTimer);await flush();monday=m;closePop();load()}
+async function flush(){if(!data)return;const key=fmtKey(monday),snap=JSON.parse(JSON.stringify(data));LS.set(key,snap);if(store){try{await store.set(key,snap)}catch(e){}}}
+$("#prev").onclick=()=>go(addDays(monday,-7));
+$("#next").onclick=()=>go(addDays(monday,7));
+$("#today").onclick=()=>go(mondayOf(new Date()));
+$("#carry").onclick=async()=>{
+  await flush();
+  const nextMon=addDays(monday,7),key=fmtKey(nextMon);
+  let nx=null;if(store){try{nx=await store.get(key)}catch(e){}}if(!nx)nx=LS.get(key);nx=normalize(nx);
+  const cp=it=>({...it,id:uid(),done:false});
+  const goals=data.goals.filter(g=>!g.done&&g.text.trim());
+  const todos=DAYS.flatMap(([k])=>data.days[k].items.filter(t=>!t.done&&t.text.trim()));
+  nx.goals.push(...goals.map(cp));nx.days.mon.items.push(...todos.map(cp));
+  nx.updatedAt=Date.now();LS.set(key,nx);if(store){try{await store.set(key,nx)}catch(e){}}
+  toast(`목표 ${goals.length}개, 할 일 ${todos.length}개를 다음 주 월요일로 복사했어요`);
+};
+function toast(t){document.querySelectorAll(".toast").forEach(x=>x.remove());const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2600)}
+
+// 시작: 브라우저 저장본으로 먼저 그리고, 계정 저장소가 연결되면 다시 불러오기
+data=normalize(LS.get(fmtKey(monday)));render();
+initStore().then(()=>{if(store)load(true);else setStatus("")});
+})();
+</script>
+
+</body>
+</html>
