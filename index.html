@@ -57,7 +57,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .meter{font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
 .bar{width:80px;height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
-.goal-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:6px 16px}
+.goal-list{display:grid;grid-template-columns:minmax(0,1fr);gap:2px}
 
 /* 요일 보드 */
 .board{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
@@ -250,11 +250,21 @@ function itemEl(it,path,opts){
   const tx=document.createElement("textarea");tx.rows=1;tx.className="txt";tx.id="x-"+it.id;tx.value=it.text||"";tx.placeholder=opts.ph;
   if(it.fg&&it.fg!=="default")tx.style.color=it.fg.startsWith("#")?it.fg:`var(--c-${it.fg})`;
   if(it.bold)tx.style.fontWeight="600";
-  tx.oninput=()=>{it.text=tx.value;autosize(tx);save()};
+  // Enter → 아랫줄 추가. 한글 입력 중 Enter는 윈도우에서 key가 "Process"로 오므로 물리 키(code)로 판단하고,
+  // 글자 확정 뒤(keyup 또는 줄바꿈 입력) 한 번만 새 줄을 만든다.
+  let pend=false,committed=false;
+  const isEnter=ev=>ev.key==="Enter"||ev.code==="Enter"||ev.code==="NumpadEnter"||ev.keyCode===13;
+  const commit=()=>{if(committed)return;committed=true;pend=false;it.text=tx.value.replace(/\n/g,"");save();addItem(path,it.id)};
+  tx.oninput=()=>{
+    if(tx.value.includes("\n")){tx.value=tx.value.replace(/\n/g,"");commit();return}
+    it.text=tx.value;autosize(tx);save()};
   tx.onkeydown=ev=>{
-    if(ev.key==="Enter"&&!ev.shiftKey&&!ev.isComposing){ev.preventDefault();addItem(path,it.id)}
-    else if(ev.key==="Backspace"&&tx.value===""){ev.preventDefault();removeItem(path,it.id,true)}
+    if(isEnter(ev)&&!ev.shiftKey){
+      if(ev.isComposing||ev.keyCode===229){pend=true;return}
+      ev.preventDefault();commit();return}
+    if(ev.key==="Backspace"&&!ev.isComposing&&tx.value===""){ev.preventDefault();removeItem(path,it.id,true)}
   };
+  tx.onkeyup=ev=>{if(pend&&isEnter(ev))commit()};
   row.append(tx);
   const tools=document.createElement("div");tools.className="tools";
   const b=(lbl,txt,fn)=>{const x=document.createElement("button");x.className="ibtn";x.textContent=txt;x.title=lbl;x.setAttribute("aria-label",lbl);x.onclick=fn;return x};
