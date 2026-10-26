@@ -81,6 +81,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .item{display:flex;align-items:flex-start;gap:6px;border-radius:7px;padding:3px 4px;position:relative}
 .item:hover{background:var(--soft)}
 .item.has-bg:hover{filter:brightness(.97)}
+.grip{flex:none;width:12px;margin-left:-2px;line-height:24px;font-size:13px;color:var(--muted);cursor:grab;user-select:none;touch-action:none;opacity:0;transition:opacity .15s}
+.item:hover .grip{opacity:.8}
+@media (hover:none){.grip{opacity:.5}}
+.item.dragging{opacity:.35}
+body.reordering,body.reordering *{cursor:grabbing!important;user-select:none}
+.dropline{position:fixed;height:2px;background:var(--accent);border-radius:2px;z-index:80;pointer-events:none}
 .chk{appearance:none;flex:none;width:16px;height:16px;margin:4px 0 0;border:1.5px solid var(--muted);border-radius:4px;cursor:pointer;display:grid;place-items:center;background:var(--paper)}
 .chk:checked{background:var(--check);border-color:var(--check)}
 .chk:checked::after{content:"";width:8px;height:4px;border:2px solid var(--check-ink);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
@@ -237,6 +243,7 @@ function itemEl(it,path,opts){
   row.className="item"+(it.done?" done":"")+(it.bg&&it.bg!=="none"?" has-bg":"");
   row.dataset.id=it.id;row.dataset.path=path;if(selected.has(it.id))row.classList.add("sel");
   if(it.bg&&it.bg!=="none")row.style.background=it.bg.startsWith("#")?it.bg:`var(--h-${it.bg})`;
+  const g=document.createElement("span");g.className="grip";g.textContent="⠿";g.title="끌어서 순서 바꾸기";g.setAttribute("aria-hidden","true");g.addEventListener("pointerdown",e=>startReorder(e,it,path,row));row.append(g);
   if(opts.check){const c=document.createElement("input");c.type="checkbox";c.className="chk";c.checked=!!it.done;c.id="c-"+it.id;c.setAttribute("aria-label","완료");c.onchange=()=>{it.done=c.checked;row.classList.toggle("done",it.done);meters();save()};row.append(c)}
   if(opts.time){const t=document.createElement("input");t.className="time";t.id="t-"+it.id;t.placeholder="시간";t.value=it.time||"";t.setAttribute("aria-label","시간");t.oninput=()=>{it.time=t.value;save()};row.append(t)}
   if(it.emoji){const e=document.createElement("span");e.className="emo";e.textContent=it.emoji;row.append(e)}
@@ -396,6 +403,7 @@ document.addEventListener("mousedown",e=>{
   if(e.target.closest("#ctx"))return;
   hideCtx();
   const row=e.target.closest(".item");
+  if(e.target.closest(".grip"))return;
   if(!row||e.target.closest(".ibtn,.chk")){if(!e.target.closest("#pop"))setSel([]);return}
   const rows=[...document.querySelectorAll(".item")];
   if(e.shiftKey&&anchorRow){const a=rows.findIndex(r=>r.dataset.id===anchorRow),b=rows.indexOf(row);if(a>=0){e.preventDefault();setSel(rows.slice(Math.min(a,b),Math.max(a,b)+1).map(r=>r.dataset.id));document.activeElement?.blur();return}}
@@ -446,6 +454,51 @@ ctx.addEventListener("click",async e=>{
   else if(act==="del")deleteSel();
 });
 addEventListener("scroll",hideCtx,{passive:true});addEventListener("resize",hideCtx);
+
+// 끌어서 순서 바꾸기 (⠿ 손잡이)
+const dropLine=document.createElement("div");dropLine.className="dropline";dropLine.hidden=true;document.body.append(dropLine);
+let reorder=null;
+function dropTarget(x,y){
+  const el=document.elementFromPoint(x,y);if(!el)return null;
+  const row=el.closest(".item");
+  if(row&&row.dataset.id!==reorder.id){const r=row.getBoundingClientRect();return{path:row.dataset.path,id:row.dataset.id,after:y>r.top+r.height/2,rect:r}}
+  if(row)return{self:true};
+  const host=el.closest("[data-list]")||(el.closest(".goals")&&$("#goals"))||(el.closest(".day")&&el.closest(".day").querySelector("[data-list]"));
+  if(!host)return null;
+  const path=host.id==="goals"?"goals":host.dataset.list,rows=host.querySelectorAll(".item"),last=rows[rows.length-1];
+  if(!last)return null;
+  return{path,id:last.dataset.id,after:true,rect:last.getBoundingClientRect()};
+}
+function startReorder(e,it,path,row){
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault();e.stopPropagation();
+  hideCtx();closePop();setSel([]);document.activeElement?.blur();
+  reorder={id:it.id,path,row,target:null};row.classList.add("dragging");document.body.classList.add("reordering");
+  e.currentTarget.setPointerCapture?.(e.pointerId);
+}
+document.addEventListener("pointermove",e=>{
+  if(!reorder)return;
+  if(e.clientY<60)scrollBy(0,-12);else if(e.clientY>innerHeight-60)scrollBy(0,12);
+  const t=dropTarget(e.clientX,e.clientY);
+  if(t&&t.self){reorder.target=null;dropLine.hidden=true;return}
+  reorder.target=t;
+  if(!t){dropLine.hidden=true;return}
+  dropLine.hidden=false;dropLine.style.left=t.rect.left+"px";dropLine.style.width=t.rect.width+"px";
+  dropLine.style.top=((t.after?t.rect.bottom:t.rect.top)-1)+"px";
+});
+function endReorder(){
+  if(!reorder)return;
+  const {id,path,row,target}=reorder;reorder=null;
+  row.classList.remove("dragging");document.body.classList.remove("reordering");dropLine.hidden=true;
+  if(!target||target.id===id)return;
+  const src=listOf(path),i=src.findIndex(x=>x.id===id);if(i<0)return;
+  const [it]=src.splice(i,1);
+  const dst=listOf(target.path);let j=dst.findIndex(x=>x.id===target.id);
+  if(j<0)dst.push(it);else dst.splice(target.after?j+1:j,0,it);
+  if(!src.length)src.push({id:uid(),text:"",done:false});
+  rerenderList(path);if(target.path!==path)rerenderList(target.path);save();
+}
+document.addEventListener("pointerup",endReorder);document.addEventListener("pointercancel",endReorder);
 
 // 키보드 · 시스템 클립보드
 const editing=()=>document.activeElement&&document.activeElement.matches("textarea,input");
