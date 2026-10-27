@@ -51,6 +51,15 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px soli
 .status{font-size:12px;color:var(--muted);min-width:70px;text-align:right}
 
 /* 주간목표 */
+.view{display:grid;gap:16px}
+.mv-list{display:grid;gap:8px;max-width:640px}
+.mv-week{display:flex;align-items:center;gap:16px;width:100%;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.mv-week:hover{border-color:var(--sel-line);background:var(--soft)}
+.mv-week.cur{background:var(--sel);border-color:var(--sel-line)}
+.mv-week b{font-family:var(--f-title);font-weight:700;font-size:20px;letter-spacing:-.03em;min-width:3.6em}
+.mv-range{font-family:var(--f-title);font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.mv-tag{font-size:11px;background:var(--check);color:var(--check-ink);border-radius:999px;padding:2px 8px}
+.mv-go{margin-left:auto;font-size:20px;color:var(--muted)}
 .goals{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px}
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .sec-head h2{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0}
@@ -95,7 +104,14 @@ body.reordering,body.reordering *{cursor:grabbing!important;user-select:none}
 .txt{flex:1;min-width:0;border:0;background:transparent;font:inherit;color:inherit;padding:2px 0;resize:none;overflow:hidden;line-height:1.45;field-sizing:content;min-height:24px}
 .txt::placeholder{color:var(--muted)}
 .txt:focus{outline:none}
-.item.done .txt{text-decoration:line-through;color:var(--done)!important}
+.item.done .txt{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--done)!important}
+/* 글자 가운데에 직접 선을 그림 (줄마다 한 번씩, 글자 폭만큼) */
+@supports (field-sizing:content){
+  .item.done .txt{text-decoration:none;flex:0 1 auto;max-width:100%;min-width:2em;
+    background-image:linear-gradient(transparent calc(50% + var(--strike-y,0px) - .75px),currentColor calc(50% + var(--strike-y,0px) - .75px),currentColor calc(50% + var(--strike-y,0px) + .75px),transparent calc(50% + var(--strike-y,0px) + .75px));
+    background-size:100% 1.45em;background-repeat:repeat-y;background-origin:content-box;background-clip:content-box}
+  .item.done .tools{margin-left:auto}
+}
 .tools{flex:none;display:flex;gap:2px;opacity:0;transition:opacity .15s}
 .item:hover .tools,.item:focus-within .tools{opacity:1}
 @media (hover:none){.tools{opacity:.7}}
@@ -135,6 +151,7 @@ body.reordering,body.reordering *{cursor:grabbing!important;user-select:none}
 <body>
 
 <div class="wrap">
+  <div class="view" id="view-week">
   <header class="top">
     <div>
       <h1 id="wk-title">주간 업무 플래너</h1>
@@ -144,7 +161,7 @@ body.reordering,body.reordering *{cursor:grabbing!important;user-select:none}
       <button class="btn" id="prev" aria-label="이전 주">← 이전 주</button>
       <button class="btn primary" id="today">이번 주</button>
       <button class="btn" id="next" aria-label="다음 주">다음 주 →</button>
-      <button class="btn" id="carry" title="이번 주 미완료 할 일과 목표를 다음 주로 복사">미완료 다음 주로</button>
+      <button class="btn" id="open-month">📅 월간 보기</button>
       <span class="status" id="status" aria-live="polite"></span>
     </div>
   </header>
@@ -158,6 +175,23 @@ body.reordering,body.reordering *{cursor:grabbing!important;user-select:none}
   </section>
 
   <main class="board" id="board"></main>
+  </div>
+
+  <div class="view" id="view-month" hidden>
+    <header class="top">
+      <div>
+        <h1 id="mv-title">월간 보기</h1>
+        <div class="range">주차를 누르면 그 주 플래너로 이동해요</div>
+      </div>
+      <div class="nav">
+        <button class="btn" id="mv-prev">← 이전 달</button>
+        <button class="btn" id="mv-today">이번 달</button>
+        <button class="btn" id="mv-next">다음 달 →</button>
+        <button class="btn primary" id="mv-back">플래너로 돌아가기</button>
+      </div>
+    </header>
+    <div class="mv-list" id="mv-list"></div>
+  </div>
 </div>
 
 <div class="ctx" id="ctx" hidden role="menu">
@@ -222,7 +256,8 @@ async function load(keepLocal){
   if(keepLocal&&data&&ts(data)>ts(v)){if(store)store.set(key,JSON.parse(JSON.stringify(data))).catch(()=>{});return}
   data=normalize(v);render();
 }
-function normalize(v){const b=blank();if(!v)return b;b.updatedAt=v.updatedAt||0;b.goals=Array.isArray(v.goals)?v.goals:[];for(const[k]of DAYS){const d=(v.days||{})[k]||{};b.days[k]={items:d.items||[...(d.sched||[]),...(d.todo||[])],memo:d.memo||""}}return b}
+function normalize(v){const b=blank();if(!v)return b;v=JSON.parse(JSON.stringify(v)); // 저장소에서 읽은 데이터는 읽기 전용이라 복사본으로 작업
+  b.updatedAt=v.updatedAt||0;b.goals=Array.isArray(v.goals)?v.goals:[];for(const[k]of DAYS){const d=(v.days||{})[k]||{};b.days[k]={items:d.items||[...(d.sched||[]),...(d.todo||[])],memo:d.memo||""}}return b}
 function save(){
   clearTimeout(saveTimer);
   data.updatedAt=Date.now();
@@ -244,7 +279,7 @@ function itemEl(it,path,opts){
   row.dataset.id=it.id;row.dataset.path=path;if(selected.has(it.id))row.classList.add("sel");
   if(it.bg&&it.bg!=="none")row.style.background=it.bg.startsWith("#")?it.bg:`var(--h-${it.bg})`;
   const g=document.createElement("span");g.className="grip";g.textContent="⠿";g.title="끌어서 순서 바꾸기";g.setAttribute("aria-hidden","true");g.addEventListener("pointerdown",e=>startReorder(e,it,path,row));row.append(g);
-  if(opts.check){const c=document.createElement("input");c.type="checkbox";c.className="chk";c.checked=!!it.done;c.id="c-"+it.id;c.setAttribute("aria-label","완료");c.onchange=()=>{it.done=c.checked;row.classList.toggle("done",it.done);meters();save()};row.append(c)}
+  if(opts.check){const c=document.createElement("input");c.type="checkbox";c.className="chk";c.checked=!!it.done;c.id="c-"+it.id;c.setAttribute("aria-label","완료");c.onchange=()=>{it.done=c.checked;if(path==="goals"){row.classList.toggle("done",it.done);meters()}else{settleDone(path,it);rerenderList(path)}save()};row.append(c)}
   if(opts.time){const t=document.createElement("input");t.className="time";t.id="t-"+it.id;t.placeholder="시간";t.value=it.time||"";t.setAttribute("aria-label","시간");t.oninput=()=>{it.time=t.value;save()};row.append(t)}
   if(it.emoji){const e=document.createElement("span");e.className="emo";e.textContent=it.emoji;row.append(e)}
   const tx=document.createElement("textarea");tx.rows=1;tx.className="txt";tx.id="x-"+it.id;tx.value=it.text||"";tx.placeholder=opts.ph;
@@ -388,7 +423,7 @@ function deleteSel(silent){
   selected.clear();paths.forEach(p=>rerenderList(p));save();
   if(!silent)toast(`${f.length}개 삭제했어요`);
 }
-function toggleDoneSel(){const f=selItems();const v=!f.every(x=>x.it.done);f.forEach(x=>x.it.done=v);new Set(f.map(x=>x.path)).forEach(p=>rerenderList(p));save()}
+function toggleDoneSel(){const f=selItems();const v=!f.every(x=>x.it.done);f.forEach(x=>{x.it.done=v;settleDone(x.path,x.it)});new Set(f.map(x=>x.path)).forEach(p=>rerenderList(p));save()}
 function pasteItems(path,anchorId,items){
   if(!items||!items.length)return;
   const arr=listOf(path),fresh=items.map(it=>({...JSON.parse(JSON.stringify(it)),id:uid()}));
@@ -536,23 +571,56 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="Escape")setSel([]);
 });
 
+// 월간 보기 (별도 화면)
+let calY=0,calM=0;
+function monthWeeks(y,m){const out=[];let d=addDays(mondayOf(new Date(y,m-1,1)),-7);const end=new Date(y,m,7);for(;d<=end;d=addDays(d,7)){const w=weekOfMonth(d);if(w.y===y&&w.m===m)out.push(new Date(d))}return out}
+const md=d=>`${d.getMonth()+1}.${String(d.getDate()).padStart(2,"0")}`;
+function drawMonth(){
+  $("#mv-title").textContent=`${calY}년 ${calM}월`;
+  const list=$("#mv-list");list.textContent="";
+  const curKey=fmtKey(monday),thisKey=fmtKey(mondayOf(new Date()));
+  monthWeeks(calY,calM).forEach(mon=>{
+    const key=fmtKey(mon),wm=weekOfMonth(mon),fri=addDays(mon,4);
+    const b=document.createElement("button");b.className="mv-week"+(key===curKey?" cur":"");
+    const n=document.createElement("b");n.textContent=`${wm.n}주차`;
+    const r=document.createElement("span");r.className="mv-range";r.textContent=`${md(mon)} (월) – ${md(fri)} (금)`;
+    b.append(n,r);
+    if(key===thisKey){const t=document.createElement("span");t.className="mv-tag";t.textContent="이번 주";b.append(t)}
+    const a=document.createElement("span");a.className="mv-go";a.setAttribute("aria-hidden","true");a.textContent="›";b.append(a);
+    b.onclick=async()=>{showView("week");if(key!==fmtKey(monday))await go(mon)};
+    list.append(b);
+  });
+}
+function setMonth(y,m){if(m<1){m=12;y--}else if(m>12){m=1;y++}calY=y;calM=m;drawMonth()}
+function showView(v){
+  $("#view-week").hidden=v!=="week";$("#view-month").hidden=v!=="month";
+  closePop();hideCtx();setSel([]);scrollTo(0,0);
+  if(v==="month"){const wm=weekOfMonth(monday);setMonth(wm.y,wm.m)}
+}
+$("#open-month").onclick=()=>showView("month");
+$("#mv-back").onclick=()=>showView("week");
+$("#mv-prev").onclick=()=>setMonth(calY,calM-1);
+$("#mv-next").onclick=()=>setMonth(calY,calM+1);
+$("#mv-today").onclick=()=>{const w=weekOfMonth(mondayOf(new Date()));setMonth(w.y,w.m)};
+
+// 체크한 할 일은 그날 목록 맨 아래로 (해제하면 완료 항목들 위로)
+function settleDone(path,it){
+  if(path==="goals")return;
+  const arr=listOf(path),i=arr.indexOf(it);if(i<0)return;
+  arr.splice(i,1);
+  if(it.done)arr.push(it);
+  else{const j=arr.findIndex(x=>x.done);arr.splice(j<0?arr.length:j,0,it)}
+  // 빈 입력 줄은 정리하고, 남은 할 일이 없으면 맨 위에 빈 줄 하나만 둠
+  for(let k=arr.length-1;k>=0;k--)if(!arr[k].done&&!(arr[k].text||"").trim())arr.splice(k,1);
+  if(!arr.some(x=>!x.done))arr.unshift({id:uid(),text:"",done:false});
+}
+
 // 주 이동
 async function go(m){clearTimeout(saveTimer);await flush();monday=m;closePop();load()}
 async function flush(){if(!data)return;const key=fmtKey(monday),snap=JSON.parse(JSON.stringify(data));LS.set(key,snap);if(store){try{await store.set(key,snap)}catch(e){}}}
 $("#prev").onclick=()=>go(addDays(monday,-7));
 $("#next").onclick=()=>go(addDays(monday,7));
 $("#today").onclick=()=>go(mondayOf(new Date()));
-$("#carry").onclick=async()=>{
-  await flush();
-  const nextMon=addDays(monday,7),key=fmtKey(nextMon);
-  let nx=null;if(store){try{nx=await store.get(key)}catch(e){}}if(!nx)nx=LS.get(key);nx=normalize(nx);
-  const cp=it=>({...it,id:uid(),done:false});
-  const goals=data.goals.filter(g=>!g.done&&g.text.trim());
-  const todos=DAYS.flatMap(([k])=>data.days[k].items.filter(t=>!t.done&&t.text.trim()));
-  nx.goals.push(...goals.map(cp));nx.days.mon.items.push(...todos.map(cp));
-  nx.updatedAt=Date.now();LS.set(key,nx);if(store){try{await store.set(key,nx)}catch(e){}}
-  toast(`목표 ${goals.length}개, 할 일 ${todos.length}개를 다음 주 월요일로 복사했어요`);
-};
 function toast(t){document.querySelectorAll(".toast").forEach(x=>x.remove());const d=document.createElement("div");d.className="toast";d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2600)}
 
 // 시작: 브라우저 저장본으로 먼저 그리고, 계정 저장소가 연결되면 다시 불러오기
